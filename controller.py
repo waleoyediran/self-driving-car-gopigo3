@@ -1,8 +1,9 @@
 import pygame
 
 from utils.throttle import throttle
+from easygopigo3 import EasyGoPiGo3
 
-MAX_FORCE = 5.0
+MAX_FORCE = 1.0
 MIN_SPEED = 100
 MAX_SPEED = 300
 ALLOWANCE = 0.2
@@ -19,6 +20,7 @@ class PS4Controller(object):
     axis_data = None
     button_data = None
     hat_data = None
+    gopigo3_robot = EasyGoPiGo3()
 
     steering_orientation = STRAIGHT
     force = 0.0
@@ -66,4 +68,23 @@ class PS4Controller(object):
 
     @throttle(0.2)
     def move(self):
-        print(self.get_controller_data())
+        force, steering = self.get_controller_data()
+
+        determined_speed = MIN_SPEED + force * (MAX_SPEED - MIN_SPEED) / MAX_FORCE
+        if determined_speed > MAX_SPEED:
+            determined_speed = MAX_SPEED
+
+        if force > 0:
+            if steering == LEFT:
+                self.gopigo3_robot.set_motor_dps(self.gopigo3_robot.MOTOR_RIGHT, determined_speed)
+                self.gopigo3_robot.set_motor_dps(self.gopigo3_robot.MOTOR_LEFT, determined_speed * 70)
+
+            elif steering == RIGHT:
+                self.gopigo3_robot.set_motor_dps(self.gopigo3_robot.MOTOR_LEFT, determined_speed)
+                self.gopigo3_robot.set_motor_dps(self.gopigo3_robot.MOTOR_RIGHT, determined_speed * 70)
+            else:
+                self.gopigo3_robot.set_motor_dps(self.gopigo3_robot.MOTOR_RIGHT, determined_speed)
+                self.gopigo3_robot.set_motor_dps(self.gopigo3_robot.MOTOR_LEFT, determined_speed)
+
+        else:
+            self.gopigo3_robot.stop()
