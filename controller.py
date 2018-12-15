@@ -1,5 +1,7 @@
 import os
 import pprint
+from threading import Thread
+
 import pygame
 
 
@@ -10,6 +12,8 @@ class PS4Controller(object):
     axis_data = None
     button_data = None
     hat_data = None
+    worker = None
+    worker_run_flag = False
 
     def init(self):
         """Initialize the joystick components"""
@@ -19,7 +23,45 @@ class PS4Controller(object):
         self.controller = pygame.joystick.Joystick(0)
         self.controller.init()
 
-    def listen(self):
+    def start_controller_worker(self):
+        self.worker_run_flag = True
+
+        def _listen():
+            """Listen for events to happen"""
+
+            if not self.axis_data:
+                self.axis_data = {}
+
+            if not self.button_data:
+                self.button_data = {}
+                for i in range(self.controller.get_numbuttons()):
+                    self.button_data[i] = False
+
+            if not self.hat_data:
+                self.hat_data = {}
+                for i in range(self.controller.get_numhats()):
+                    self.hat_data[i] = (0, 0)
+
+            while self.worker_run_flag:
+                for event in pygame.event.get():
+                    if event.type == pygame.JOYAXISMOTION:
+                        self.axis_data[event.axis] = round(event.value, 2)
+
+                    # pprint.pprint(self.axis_data)
+
+        self.worker = Thread(target=_listen())
+        self.worker.daemon = True
+        self.worker.start()
+
+        print "Thread started"
+
+    def stop_controller_worker(self):
+        self.worker_run_flag = False
+
+    def get_stick_params(self):
+        return self.axis_data
+
+    def _listen(self):
         """Listen for events to happen"""
 
         if not self.axis_data:
@@ -35,26 +77,28 @@ class PS4Controller(object):
             for i in range(self.controller.get_numhats()):
                 self.hat_data[i] = (0, 0)
 
-        while True:
+        while self.worker_run_flag:
             for event in pygame.event.get():
                 if event.type == pygame.JOYAXISMOTION:
                     self.axis_data[event.axis] = round(event.value, 2)
-                elif event.type == pygame.JOYBUTTONDOWN:
-                    self.button_data[event.button] = True
-                elif event.type == pygame.JOYBUTTONUP:
-                    self.button_data[event.button] = False
-                elif event.type == pygame.JOYHATMOTION:
-                    self.hat_data[event.hat] = event.value
+
+                pprint.pprint(self.axis_data)
+                # elif event.type == pygame.JOYBUTTONDOWN:
+                #     self.button_data[event.button] = True
+                # elif event.type == pygame.JOYBUTTONUP:
+                #     self.button_data[event.button] = False
+                # elif event.type == pygame.JOYHATMOTION:
+                #     self.hat_data[event.hat] = event.value
 
                 #
 
-                os.system('clear')
-                pprint.pprint(self.button_data)
-                pprint.pprint(self.axis_data)
-                pprint.pprint(self.hat_data)
+                # os.system('clear')
+                # pprint.pprint(self.button_data)
+                # pprint.pprint(self.axis_data)
+                # pprint.pprint(self.hat_data)
 
 
-if __name__ == "__main__":
-    ps4 = PS4Controller()
-    ps4.init()
-    ps4.listen()
+# if __name__ == "__main__":
+#     ps4 = PS4Controller()
+#     ps4.init()
+#     ps4.listen()
